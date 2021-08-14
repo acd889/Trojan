@@ -174,55 +174,33 @@ installnginx(){
  fi
 }
 #############安装acme#####################
-installacme(){
-  curl -sL https://get.acme.sh | sh -s email=605722161@qq.com
-  sudo ~/.acme.sh/acme.sh --upgrade --auto-upgrade > /dev/null
-  rm -rf /etc/trojan/
-  mkdir /etc/trojan/
-}
-##################################################
-issuecert(){
-  rm -rf /etc/nginx/sites-enabled/*
-  rm -rf /etc/nginx/sites-available/*
-  rm -rf /etc/nginx/conf.d/*
-  touch /etc/nginx/conf.d/default.conf
-    cat > '/etc/nginx/conf.d/default.conf' << EOF
-server {
-    listen       80;
-    server_name  $domain;
-    #charset koi8-r;
-    #access_log  /var/log/nginx/host.access.log  main;
-    location / {
-        root   /usr/share/nginx/html;
-        index  index.html index.htm;
-    }
-    #error_page  404              /404.html;
-    # redirect server error pages to the static page /50x.html
-    #
-    error_page   500 502 503 504  /50x.html;
-    location = /50x.html {
-        root   /usr/share/nginx/html;
-    }
-    # proxy the PHP scripts to Apache listening on 127.0.0.1:80
-    #
-    #location ~ \.php$ {
-    #    proxy_pass   http://127.0.0.1;
-    #}
-    # pass the PHP scripts to FastCGI server listening on 127.0.0.1:9000
-    #
-    #location ~ \.php$ {
-    #    root           html;
-    #    fastcgi_pass   127.0.0.1:9000;
-    #    fastcgi_index  index.php;
-    #    fastcgi_param  SCRIPT_FILENAME  /scripts$fastcgi_script_name;
-    #    include        fastcgi_params;
-    #}
-    # deny access to .htaccess files, if Apache's document root
-    # concurs with nginx's one
-    #
-    #location ~ /\.ht {
-    #    deny  all;
-    #}
+curl -sL https://get.acme.sh | sh -s email=hijk.pw@protonmail.ch
+        source ~/.bashrc
+        ~/.acme.sh/acme.sh  --upgrade  --auto-upgrade
+        ~/.acme.sh/acme.sh --set-default-ca --server letsencrypt
+        if [[ "$BT" = "false" ]]; then
+            ~/.acme.sh/acme.sh   --issue -d $DOMAIN --keylength ec-256 --pre-hook "systemctl stop nginx" --post-hook "systemctl restart nginx"  --standalone
+        else
+            ~/.acme.sh/acme.sh   --issue -d $DOMAIN --keylength ec-256 --pre-hook "nginx -s stop || { echo -n ''; }" --post-hook "nginx -c /www/server/nginx/conf/nginx.conf || { echo -n ''; }"  --standalone
+        fi
+        [[ -f ~/.acme.sh/${DOMAIN}_ecc/ca.cer ]] || {
+            colorEcho $RED " 获取证书失败，请复制上面的红色文字到 https://hijk.art 反馈"
+            exit 1
+        }
+        CERT_FILE="/usr/local/etc/trojan/${DOMAIN}.pem"
+        KEY_FILE="/usr/local/etc/trojan/${DOMAIN}.key"
+        ~/.acme.sh/acme.sh  --install-cert -d $DOMAIN --ecc \
+            --key-file       $KEY_FILE  \
+            --fullchain-file $CERT_FILE \
+            --reloadcmd     "service nginx force-reload"
+        [[ -f $CERT_FILE && -f $KEY_FILE ]] || {
+            colorEcho $RED " 获取证书失败，请到 https://hijk.art 反馈"
+            exit 1
+        }
+    else
+        cp ~/trojan.pem /usr/local/etc/trojan/${DOMAIN}.pem
+        cp ~/trojan.key /usr/local/etc/trojan/${DOMAIN}.key
+    fi
 }
 EOF
   wget https://raw.githubusercontent.com/acd889/trojan-2/master/web.zip
